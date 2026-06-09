@@ -1,0 +1,69 @@
+﻿# Kiến trúc: Stack Docker lesson: monitoring and observability (C#/ASP.NET Core).
+# (EN: Docker stack for lesson: monitoring and observability (C#/ASP.NET Core).)
+#
+# Thư mục làm việc: 0-monitoring-and-observability/2-csharp/.docker
+# (EN: Working directory: 0-monitoring-and-observability/2-csharp/.docker)
+#
+# Khởi chạy stack:
+#   cd 0-monitoring-and-observability/2-csharp/.docker && docker compose up -d --build
+#
+# Dọn dẹp:
+#   docker compose down -v
+#
+# =============================================================================
+# Docker Compose — lesson `0-monitoring-and-observability` C# track
+# (metrics-api ASP.NET Core + Prometheus + Grafana).
+# Note: C# metrics-api uses in-memory storage — no external database required.
+# =============================================================================
+
+name: 2-csharp-monitoring
+
+services:
+  # API ASP.NET Core expose `/metrics` và `/cats`; hostname nội bộ `app` để Prometheus scrape.
+  # In-memory store seeded with one Cat (Tom) — no postgres service needed.
+  # (EN: ASP.NET Core API exposes `/metrics` and `/cats`; internal hostname `app` for Prometheus scrape.
+  #      In-memory store seeded with one Cat (Tom) — no postgres service needed.)
+  app:
+    build:
+      context: ../metrics-api
+    image: starciacademy/monitoring-and-observability-metrics-api-csharp:latest
+    ports:
+      # Ánh xạ cổng host 3000 → container 3000 (HTTP API).
+      # (EN: Map host port 3000 → container 3000 (HTTP API).)
+      - "3000:3000"
+    networks:
+      - "2-csharp-monitoring"
+
+  # Prometheus scrape `/metrics` của service `app`.
+  # (EN: Prometheus scrapes `/metrics` from service `app`.)
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - app
+    networks:
+      - "2-csharp-monitoring"
+
+  # Grafana — UI Explore/Dashboard; datasource Prometheus provisioning sẵn.
+  # (EN: Grafana — Explore/Dashboard UI; Prometheus datasource provisioned.)
+  grafana:
+    image: grafana/grafana:11.3.0
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - "2-csharp-monitoring"
+
+networks:
+  "2-csharp-monitoring":
+    name: "2-csharp-monitoring"

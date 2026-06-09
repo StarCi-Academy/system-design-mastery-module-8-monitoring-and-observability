@@ -1,0 +1,6 @@
+server:
+  port: ${PORT:3000}
+
+# Consul Agent HTTP API base URL; overridden by CONSUL_BASE_URL inside Compose.
+consul:
+  base-url: ${CONSUL_BASE_URL:http://localhost:8500}

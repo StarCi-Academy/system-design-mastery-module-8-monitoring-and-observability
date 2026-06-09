@@ -1,0 +1,39 @@
+# Docker Compose — lesson 2-service-discovery (C# track).
+# consul-api (ASP.NET Core + HttpClient) + Consul dev agent.
+#
+# Working directory: 2-service-discovery/2-csharp/.docker
+# Start:   docker compose up -d --build
+# Logs:    docker compose logs -f
+# Cleanup: docker compose down -v
+
+name: 2-service-discovery-csharp
+
+services:
+  # Consul dev agent — single-node registry for the lab (HTTP API + UI on 8500).
+  consul:
+    image: hashicorp/consul:1.19
+    command: "agent -dev -client=0.0.0.0"
+    ports:
+      - "8500:8500"
+    networks:
+      - "service-discovery"
+
+  # ASP.NET Core proxy calling the Consul Agent HTTP API; Consul__BaseUrl targets the consul service.
+  consul-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      Consul__BaseUrl: http://consul:8500
+      CONSUL_BASE_URL: http://consul:8500
+      PORT: "3000"
+    depends_on:
+      - consul
+    ports:
+      - "3003:3000"
+    networks:
+      - "service-discovery"
+
+networks:
+  "service-discovery":
+    name: "service-discovery-csharp"

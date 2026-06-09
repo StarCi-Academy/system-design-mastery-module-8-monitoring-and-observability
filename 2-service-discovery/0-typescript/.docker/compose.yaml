@@ -1,0 +1,38 @@
+# Docker Compose — lesson 2-service-discovery (TypeScript track).
+# consul-api (NestJS) + Consul dev agent.
+#
+# Working directory: 2-service-discovery/0-typescript/.docker
+# Start:   docker compose up -d --build
+# Logs:    docker compose logs -f
+# Cleanup: docker compose down -v
+
+name: 2-service-discovery-typescript
+
+services:
+  # Consul dev agent — single-node registry for the lab (HTTP API + UI on 8500).
+  consul:
+    image: hashicorp/consul:1.19
+    command: "agent -dev -client=0.0.0.0"
+    ports:
+      - "8500:8500"
+    networks:
+      - "service-discovery"
+
+  # NestJS proxy calling the Consul Agent HTTP API; CONSUL_BASE_URL targets the consul service.
+  consul-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      CONSUL_BASE_URL: http://consul:8500
+      PORT: "3000"
+    depends_on:
+      - consul
+    ports:
+      - "3003:3000"
+    networks:
+      - "service-discovery"
+
+networks:
+  "service-discovery":
+    name: "service-discovery-typescript"

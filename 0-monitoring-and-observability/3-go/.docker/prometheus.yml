@@ -1,0 +1,14 @@
+﻿# VI: Cấu hình Prometheus — scrape `/metrics` từ service Compose `app` (DNS nội bộ, Go).
+# EN: Prometheus config — scrape `/metrics` from Compose service `app` (internal DNS, Go).
+
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: go-app-lesson0
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          # VI: `app` là tên service trong compose.yaml (cùng Docker network lesson).
+          # EN: `app` is the service name in compose.yaml (same lesson Docker network).
+          - app:3000

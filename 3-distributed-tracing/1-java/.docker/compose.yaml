@@ -1,0 +1,69 @@
+# Docker Compose — lesson `3-distributed-tracing` (Spring Boot tracing-api + Jaeger OTLP).
+# (EN: Docker Compose — lesson `3-distributed-tracing` (Spring Boot tracing-api + Jaeger OTLP).)
+#
+# Thư mục làm việc: 3-distributed-tracing/1-java/.docker
+# (EN: Working directory: 3-distributed-tracing/1-java/.docker)
+#
+# Khởi chạy stack:
+# (EN: Start stack:)
+#   cd 3-distributed-tracing/1-java/.docker && docker compose up -d --build
+#
+# Gọi API (host 3005 → container 3000) và mở Jaeger UI (host 16687):
+# (EN: Call API (host 3005 → container 3000) and open Jaeger UI (host 16687).)
+#     curl http://localhost:3005/checkout
+#     open http://localhost:16687
+#
+# Dọn dẹp:
+# (EN: Cleanup:)
+#   docker compose down -v
+# =============================================================================
+
+# Tiền tố project Compose — trùng tên thư mục bài học (slug).
+# (EN: Compose project prefix — matches lesson folder slug.)
+name: 3-distributed-tracing-java
+
+services:
+  # VI: Jaeger all-in-one — trong container vẫn :16686 / :4318; map host 16687/4319 để tránh đụng Jaeger khác trên máy.
+  # EN: Jaeger all-in-one — in-container still :16686 / :4318; host 16687/4319 avoids clashes with another local Jaeger.
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16687:16686"
+      - "4319:4318"
+    networks:
+      - "3-distributed-tracing-java"
+
+  # VI: Spring Boot export trace OTLP — host 3005 → app :3000.
+  # EN: Spring Boot OTLP trace export — host 3005 → app :3000.
+  tracing-api:
+    build:
+      context: ../tracing-api
+      dockerfile: Dockerfile
+    environment:
+      # Java agent / autoconfigure đọc endpoint base (không kèm `/v1/traces`).
+      # (EN: Java agent / autoconfigure reads the base endpoint (no `/v1/traces` suffix).)
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_SERVICE_NAME: spring-tracing-app
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      # Limit JVM heap so the container stays within memory bounds on a dev machine.
+      JAVA_OPTS: "-Xmx256m -Xms128m"
+    depends_on:
+      - jaeger
+    ports:
+      - "3005:3000"
+    networks:
+      - "3-distributed-tracing-java"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+# Network do Compose tạo; `name` trùng slug bài (không `external`).
+# (EN: Compose-managed network; `name` matches lesson slug (not `external`).)
+networks:
+  "3-distributed-tracing-java":
+    name: "3-distributed-tracing-java"

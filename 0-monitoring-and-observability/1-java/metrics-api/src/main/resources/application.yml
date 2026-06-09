@@ -1,0 +1,19 @@
+# Listen on :3000 to match the shared lesson contract (app:3000).
+server:
+  port: 3000
+
+spring:
+  application:
+    name: metrics-api
+
+# Expose the Prometheus scrape endpoint via Actuator and publish a percentile
+# histogram for the custom duration timer so p95 is queryable.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http_request_duration_seconds: true

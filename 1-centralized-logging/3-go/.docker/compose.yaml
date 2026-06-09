@@ -1,0 +1,65 @@
+# =============================================================================
+# Docker Compose — lesson `1-centralized-logging` (Go): logging-api + Promtail + Loki + Grafana.
+#
+# Working directory: `.../1-centralized-logging/3-go/.docker/`
+#
+# Start detached:   docker compose up -d --build
+# Stop + remove:    docker compose down -v
+# Note: Go ships logs to stdout; a Promtail sidecar tails the container and pushes to Loki.
+# =============================================================================
+
+name: 1-centralized-logging-go
+
+services:
+  loki:
+    image: grafana/loki:3.3.2
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - centralized-logging
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3001:3000"
+    depends_on:
+      - loki
+    networks:
+      - centralized-logging
+
+  # Promtail — discovers the logging-api container and ships its stdout to Loki.
+  promtail:
+    image: grafana/promtail:3.3.2
+    command: -config.file=/etc/promtail/config.yaml
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - loki
+    networks:
+      - centralized-logging
+
+  # Go logging-api — writes structured JSON to stdout; reports panics to Sentry.
+  logging-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      LOG_APP_NAME: logging-api
+      LOG_ENV: lab
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    ports:
+      - "3002:3000"
+    networks:
+      - centralized-logging
+
+networks:
+  centralized-logging:
+    name: 1-centralized-logging-go

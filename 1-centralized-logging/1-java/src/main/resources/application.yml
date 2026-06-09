@@ -1,0 +1,9 @@
+server:
+  # Listen on 8080 inside the container; mapped to host 3002 by Docker Compose.
+  port: ${PORT:8080}
+
+sentry:
+  # Read DSN from env; if empty the starter disables itself (not mandatory for the lab).
+  dsn: ${SENTRY_DSN:}
+  # Trace sample rate — 1.0 = 100% (lab only; production should be < 0.1).
+  traces-sample-rate: 1.0

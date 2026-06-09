@@ -1,0 +1,38 @@
+# Docker Compose — lesson 2-service-discovery (Go track).
+# consul-api (net/http + hashicorp/consul/api) + Consul dev agent.
+#
+# Working directory: 2-service-discovery/3-go/.docker
+# Start:   docker compose up -d --build
+# Logs:    docker compose logs -f
+# Cleanup: docker compose down -v
+
+name: 2-service-discovery-go
+
+services:
+  # Consul dev agent — single-node registry for the lab (HTTP API + UI on 8500).
+  consul:
+    image: hashicorp/consul:1.19
+    command: "agent -dev -client=0.0.0.0"
+    ports:
+      - "8500:8500"
+    networks:
+      - "service-discovery"
+
+  # Go proxy calling the Consul Agent HTTP API; CONSUL_BASE_URL targets the consul service.
+  consul-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      CONSUL_BASE_URL: http://consul:8500
+      PORT: "3000"
+    depends_on:
+      - consul
+    ports:
+      - "3003:3000"
+    networks:
+      - "service-discovery"
+
+networks:
+  "service-discovery":
+    name: "service-discovery-go"

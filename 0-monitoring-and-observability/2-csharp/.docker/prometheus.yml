@@ -1,0 +1,14 @@
+﻿# VI: Cấu hình Prometheus — scrape `/metrics` từ service Compose `app` (DNS nội bộ, C#/ASP.NET Core).
+# EN: Prometheus config — scrape `/metrics` from Compose service `app` (internal DNS, C#/ASP.NET Core).
+
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: dotnet-app-lesson0
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          # VI: `app` là tên service trong compose.yaml (cùng Docker network lesson).
+          # EN: `app` is the service name in compose.yaml (same lesson Docker network).
+          - app:3000

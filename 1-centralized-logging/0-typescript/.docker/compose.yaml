@@ -1,0 +1,59 @@
+# =============================================================================
+# Docker Compose — lesson `1-centralized-logging` (TypeScript): logging-api + Loki + Grafana.
+#
+# Working directory: `.../1-centralized-logging/0-typescript/.docker/`
+#
+# Start detached:   docker compose up -d --build
+# Tail logs:        docker compose logs -f logging-api
+# Stop + remove:    docker compose down -v
+# =============================================================================
+
+name: 1-centralized-logging-typescript
+
+services:
+  # Loki — centralized log backend, receives logs from Winston via the HTTP push API (:3100).
+  loki:
+    image: grafana/loki:3.3.2
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - centralized-logging
+
+  # Grafana — dashboard displaying logs from Loki; datasource auto-provisioned.
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3001:3000"
+    depends_on:
+      - loki
+    networks:
+      - centralized-logging
+
+  # NestJS logging-api — pushes logs to Loki (Winston); captures errors with Sentry.
+  logging-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      LOKI_URL: http://loki:3100
+      LOG_APP_NAME: logging-api
+      LOG_ENV: lab
+      # Sentry DSN — replace with a real DSN from sentry.io or a self-hosted Sentry.
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    depends_on:
+      - loki
+    ports:
+      - "3002:3000"
+    networks:
+      - centralized-logging
+
+networks:
+  centralized-logging:
+    name: 1-centralized-logging-typescript

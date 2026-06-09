@@ -1,0 +1,55 @@
+# =============================================================================
+# Docker Compose — lesson `1-centralized-logging` (C#): logging-api + Loki + Grafana.
+#
+# Working directory: `.../1-centralized-logging/2-csharp/.docker/`
+#
+# Start detached:   docker compose up -d --build
+# Stop + remove:    docker compose down -v
+# =============================================================================
+
+name: 1-centralized-logging-csharp
+
+services:
+  loki:
+    image: grafana/loki:3.3.2
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - centralized-logging
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3001:3000"
+    depends_on:
+      - loki
+    networks:
+      - centralized-logging
+
+  # ASP.NET Core logging-api — pushes logs to Loki (Serilog); captures errors with Sentry.
+  logging-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      LOKI_URL: http://loki:3100
+      LOG_APP_NAME: logging-api
+      LOG_ENV: lab
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    depends_on:
+      - loki
+    ports:
+      - "3002:3000"
+    networks:
+      - centralized-logging
+
+networks:
+  centralized-logging:
+    name: 1-centralized-logging-csharp
